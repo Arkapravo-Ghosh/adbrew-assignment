@@ -36,3 +36,21 @@
     transform: rotate(360deg);
   }
 }
+
+.error {
+  color: #c0392b;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.todo-list {
+  width: fit-content;
+  margin: 0 auto;
+  padding-left: 1.5em;
+  text-align: left;
+}

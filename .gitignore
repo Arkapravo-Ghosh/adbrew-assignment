@@ -1,0 +1,6 @@
+src/db
+src/tmp
+node_modules
+.eslintcache
+src/rest/mydatabase
+**/__pycache__

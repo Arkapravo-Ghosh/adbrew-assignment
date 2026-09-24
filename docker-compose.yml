@@ -1,7 +1,8 @@
-version: '2'
+# ADBREW_CODEBASE_PATH defaults to ./src (relative to this file); export it to override.
 services:
   api:
     build: .
+    platform: linux/amd64
     container_name: api
     command: bash -c "cd /src/rest && python manage.py runserver 0.0.0.0:8000"
     ports:
@@ -9,26 +10,61 @@ services:
     links:
       - mongo
     volumes:
-      - ${ADBREW_CODEBASE_PATH}/tmp:/tmp
-      - ${ADBREW_CODEBASE_PATH}:/src
+      - ${ADBREW_CODEBASE_PATH:-./src}/tmp:/tmp
+    develop:
+      watch:
+        # Django's runserver auto-reloads on synced .py changes
+        - action: sync
+          path: ${ADBREW_CODEBASE_PATH:-./src}/rest
+          target: /src/rest
+          ignore:
+            - "**/__pycache__/"
+        # Python deps are installed at image build time
+        - action: rebuild
+          path: ${ADBREW_CODEBASE_PATH:-./src}/requirements.txt
+        - action: rebuild
+          path: ./Dockerfile
 
   app:
     build: .
+    platform: linux/amd64
     container_name: app
     command: bash -c "cd /src/app && yarn install && yarn start"
     ports:
       - "3000:3000"
     volumes:
-      - ${ADBREW_CODEBASE_PATH}:/src
+      # Keep installed packages across container restarts/recreates
+      - app_node_modules:/src/app/node_modules
+    develop:
+      watch:
+        # React dev server hot-reloads on synced changes
+        - action: sync
+          path: ${ADBREW_CODEBASE_PATH:-./src}/app
+          target: /src/app
+          ignore:
+            - node_modules/
+            - package.json
+            - yarn.lock
+        # Restart re-runs `yarn install` from the container command
+        - action: sync+restart
+          path: ${ADBREW_CODEBASE_PATH:-./src}/app/package.json
+          target: /src/app/package.json
+        - action: sync+restart
+          path: ${ADBREW_CODEBASE_PATH:-./src}/app/yarn.lock
+          target: /src/app/yarn.lock
+        - action: rebuild
+          path: ./Dockerfile
 
   mongo:
     build: .
+    platform: linux/amd64
     container_name: mongo
     restart: always
     ports:
       - "27017:27017"
     volumes:
-      - ${ADBREW_CODEBASE_PATH}/db/:/data/db
+      - ${ADBREW_CODEBASE_PATH:-./src}/db/:/data/db
     command: /usr/bin/mongod --bind_ip 0.0.0.0
 
-    
+volumes:
+  app_node_modules:
